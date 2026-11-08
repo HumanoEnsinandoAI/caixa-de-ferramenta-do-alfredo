@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "humanoensinando": {
-      "type": "http",
-      "url": "https://humanoensinando-ai-teste.alfredo-9ca.workers.dev/mcp"
-    }
-  }
-}
