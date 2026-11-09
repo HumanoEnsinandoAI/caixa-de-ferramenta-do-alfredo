@@ -24,6 +24,10 @@ let apagar: Timer | null = null
 
 const sumir = async ($: EngineInterface) => {
   apagar = null
+  // Se um agente chegou enquanto o fade corria, saindo já voltou a false: não zera o contador.
+  if (!(await read($, saindo))) {
+    return
+  }
   await update($, agentes, () => 0)
   await update($, saindo, () => false)
 }
@@ -32,7 +36,16 @@ const conferir = async ($: EngineInterface) => {
   const ativos = agentesAtivos(await $.agent.list())
 
   if (ativos > 0) {
-    await update($, agentes, () => ativos)
+    // Há agente trabalhando: cancela um fade pendente, mesmo que o spawn não tenha passado por aqui.
+    if (await read($, saindo)) {
+      apagar?.cancel()
+      apagar = null
+      await update($, saindo, () => false)
+    }
+    // Só grava quando o número muda: a vigia roda a cada segundo e cada gravação redesenha.
+    if ((await read($, agentes)) !== ativos) {
+      await update($, agentes, () => ativos)
+    }
     return
   }
 
@@ -90,7 +103,7 @@ export const register: Register = on => {
     }
 
     return next(e)
-  })
+  }).catch(($, e, next) => next(e)) // Se o monitor falhar, o envio do aluno segue como se nada tivesse acontecido.
 
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
@@ -103,14 +116,17 @@ export const register: Register = on => {
   on('agent.spawn', async ($, e, next) => {
     const result = await next(e)
 
-    apagar?.cancel()
-    apagar = null
-    await update($, saindo, () => false)
-    await update($, agentes, atual => atual + 1)
-    vigiar($)
+    // Um spawn recusado ({ deny }) não começa agente, então não conta.
+    if (!('deny' in (result as object))) {
+      apagar?.cancel()
+      apagar = null
+      await update($, saindo, () => false).catch(() => undefined)
+      await update($, agentes, atual => atual + 1).catch(() => undefined)
+      vigiar($)
+    }
 
     return result
-  })
+  }).catch(($, e, next) => next(e)) // Se o contador falhar, o spawn segue sem ser atrapalhado.
 
   // Depois de cada turno e de cada compactação, quando a contagem chega.
   on('session.measure', async ($, e, next) => {
