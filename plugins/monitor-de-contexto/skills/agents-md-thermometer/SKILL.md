@@ -1,6 +1,6 @@
 ---
 name: agents-md-thermometer
-description: Checks whether the project's AGENTS.md and CLAUDE.md are well written and how much they weigh in the context window, with a score from 0 to 5 and proposals to split, merge or add examples, without applying anything. Use when someone asks whether these files are good, too big or well organized, or asks to review, trim, split or merge them; and right after you create or rewrite one of them. Do not use for other .md files or for every small edit.
+description: Run this right after you create or rewrite any AGENTS.md or CLAUDE.md (any folder, including a parent folder of projects), and whenever someone asks whether these files are good, too big, well organized, or to review, trim, split or merge them. Scores each file from 0 to 5 for quality and context-window weight and proposes changes, without applying anything. Not for other .md files or small edits.
 user-invocable: false
 allowed-tools: Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/signals.py *) Bash(py -3 ${CLAUDE_SKILL_DIR}/scripts/signals.py *)
 ---
