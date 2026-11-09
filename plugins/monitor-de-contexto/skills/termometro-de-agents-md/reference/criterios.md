@@ -11,15 +11,19 @@ Cada critério vale um ponto. Antes de pontuar, veja se ele se aplica. Um crité
 
 ## 1. Tamanho (crítico)
 
-- Sinais: `linhas`, `caracteres`, `critico_mais_de_200_linhas`, `critico_mais_de_20000_caracteres`.
-- Cumpre: até 200 linhas e até 20.000 caracteres. As duas medidas valem, porque poucas linhas longas também pesam.
-- Falha crítica: passar de qualquer um dos dois limites. Proponha a divisão (etapa 5 da SKILL).
+- Sinais: `linhas`, `caracteres`, `critico_mais_de_200_linhas`, `critico_mais_de_20000_caracteres`, `importacoes`.
+- Cumpre: até 200 linhas e até 20.000 caracteres no próprio arquivo. As duas medidas valem, porque poucas linhas longas também pesam.
+- Custo somado: o que carrega junto com o arquivo entra na conta. Some:
+  - os arquivos de `@import` (sinal: `importacoes[].caracteres`), porque entram junto sempre;
+  - os arquivos que o texto manda ler sem condição, como "leia `GLOSSARIO.md`" numa frase que vale para toda tarefa, porque o Claude vai carregar todos.
+- Não some: referência com condição de tarefa, como "para deploy, leia `deploy.md`". Ela só carrega quando a tarefa aparece. Se o arquivo não tem divisão por tarefa, todas as referências valem como sem condição.
+- Falha crítica: passar de algum dos limites, somando a conta acima. Proponha a divisão (etapa 5 da SKILL).
 
 ## 2. Comandos exatos (só projeto de desenvolvimento, só no arquivo raiz)
 
 - N/A: `projeto_de_desenvolvimento` é falso, ou o arquivo está numa subpasta (ele é carregado sob demanda e não é a visão geral).
 - Cumpre: traz ao menos um comando de teste e um de build ou lint, escritos como se digitam, e todo comando citado existe. Sinal: `comandos_citados`, com `existe` true, false ou null.
-- `existe: null` é uma ferramenta que o script não confere (pytest, go, cargo). Confira pela leitura do projeto.
+- `existe: null` é uma ferramenta que o script não confere (pytest, go, cargo, npx). Confira pela leitura do projeto.
 - Falha: não há comando de teste ou de build, ou algum comando com `existe: false`. "Rode os testes" sozinho não conta.
 
 ## 3. Exemplos quando forem necessários
@@ -45,31 +49,35 @@ Não é necessário quando a instrução é uma regra simples de comportamento, 
 Falha se houver qualquer um destes:
 
 - Frases genéricas que não mudam o comportamento, como "escreva código limpo", "siga as boas práticas" ou "clean code". Sinal: `frases_genericas`.
-- Árvore de diretórios desenhada com `├──`, `|--` ou similar. Sinal: `linhas_de_arvore`. Árvores ficam desatualizadas.
+- Árvore de diretórios desenhada com `├──`, `└──`, `|--` ou similar. Sinal: `linhas_de_arvore`. Árvores ficam desatualizadas. Se o relatório do `/doctor` já cobriu isso, este ponto sai da conta.
 
 Pastas são permitidas, com estas regras (sinal: `linhas_de_pasta`):
 
-- Cada pasta em uma linha, com descrição de até 80 caracteres. Exemplo: "`api/`: handlers do servidor".
+- Cada pasta em uma linha, com até 80 caracteres na linha inteira. Exemplo: "`api/`: handlers do servidor".
 - No máximo 10 linhas de pastas no arquivo. Se houver mais, a menção fica no AGENTS.md da própria pasta.
 - Linha de pasta acima de 80 caracteres: proponha encurtar.
 
-## 5. Critério de pronto (só se o projeto tiver um)
+## 5. Critério de pronto (só se o projeto tiver um, só no arquivo raiz)
 
-- N/A: `arquivos_de_pronto` e `workflows_ci` vazios. Um Makefile sem alvo de verificação não conta.
+- N/A: o arquivo está numa subpasta, ou `arquivos_de_pronto` e `workflows_ci` estão vazios. Um Makefile sem alvo de verificação não conta.
 - Cumpre: o projeto tem critério de pronto (workflow de CI, alvo de verificação no Makefile, CONTRIBUTING.md, template de pull request, pré-commit) e o arquivo o cita pelo nome ou pelo comando.
 - Falha: o projeto tem esse critério, mas o arquivo não o menciona. Proponha uma linha citando o comando ou o arquivo.
 
 ## 6. Arquivo que carrega (precedência)
 
-- N/A: a pasta não tem CLAUDE.md. Com só AGENTS.md, este critério cumpre.
-- Falha: há CLAUDE.md na pasta. O Claude Code ignora o AGENTS.md quando há CLAUDE.md na pasta de trabalho ou acima, e o CLAUDE.md duplica o conteúdo. Proponha unificar em AGENTS.md e apagar o CLAUDE.md, com aprovação.
-- Sinal: `quando_carrega` (ignorado, no início ou sob demanda). A pista vem da precedência pela pasta de trabalho. Confirme na documentação se houver dúvida.
+Aplica-se só ao AGENTS.md e aos CLAUDE.md de cada pasta, e depende do sinal `quando_carrega`.
+
+- AGENTS.md que carrega (no início ou sob demanda, sem CLAUDE.md bloqueando): cumpre.
+- AGENTS.md ignorado: falha. Há CLAUDE.md na pasta de trabalho ou acima que não é só `@AGENTS.md`. Proponha o caminho da etapa 5 para o CLAUDE.md que bloqueia.
+- CLAUDE.md que só importa `@AGENTS.md`, ou é link para ele: cumpre.
+- CLAUDE.md com conteúdo próprio: falha, porque o AGENTS.md dessa pasta fica ignorado. A proposta depende da análise caso a caso (etapa 5). Não há regra fixa de apagar.
+- CLAUDE.local.md: N/A. É pessoal e não entra no versionamento. Ele bloqueia o AGENTS.md, e isso aparece no sinal, mas a proposta não o une ao versionado.
 
 ## 7. Referências vivas
 
-- N/A: o arquivo não cita caminhos nem comandos.
+- N/A: o arquivo não cita caminhos nem comandos, ou o relatório do `/doctor` já cobriu as referências.
 - Cumpre: todo caminho em crase (`referencias_de_caminho`) existe, e todo comando (`comandos_citados`) existe ou é null.
-- Falha: algum caminho com `existe: false`, ou comando com `existe: false`. Proponha corrigir ou remover a linha.
+- Falha: algum caminho com `existe: false`, ou comando com `existe: false`. Comandos já pontuados no critério 2 não contam de novo aqui. Proponha corrigir ou remover a linha.
 
 ## 8. Sem segredos (crítico)
 
@@ -79,7 +87,7 @@ Pastas são permitidas, com estas regras (sinal: `linhas_de_pasta`):
 
 ## 9. Imports com `@`
 
-- N/A: o arquivo não tem `@` apontando para arquivo (`importacoes` vazio).
+- N/A: o arquivo não tem `@` apontando para arquivo (`importacoes` vazio). Menções como `@alfredo` ou `@types/node` não são imports.
 - Cumpre: cada import aponta para arquivo que existe, com até 20.000 caracteres, e o conteúdo importado é necessário em toda sessão.
 - Falha: import quebrado, import acima de 20.000 caracteres, ou conteúdo só às vezes necessário carregado por `@`. Proponha trocar por referência em texto com a condição para ler. O import não reduz o custo: ele entra junto com o arquivo que o importa.
 

@@ -5,8 +5,8 @@ Só a biblioteca padrão. Imprime JSON com pistas; o julgamento é do Claude,
 seguindo reference/criterios.md. Pista não é veredito: quando a leitura do
 arquivo divergir do sinal, vale a leitura.
 
-Uso, sempre a partir da raiz do projeto:
-  python3 sinais.py listar                 arquivos de instrução, onde e quando cada um carrega
+Uso, a partir da pasta de trabalho atual (sem cd):
+  python3 sinais.py listar                 arquivos de instrução e quando cada um carrega
   python3 sinais.py projeto                se é projeto de desenvolvimento, comandos e arquivos de pronto
   python3 sinais.py arquivo CAMINHO        sinais de um arquivo
 """
@@ -16,7 +16,6 @@ import re
 import sys
 
 NOMES = {"AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"}
-TIPOS_CLAUDE = {"CLAUDE.md", "CLAUDE.local.md"}
 IGNORAR = {"node_modules", ".git", ".venv", "venv", "vendor", "dist", "build", "target",
            ".next", "coverage", "__pycache__"}
 
@@ -25,6 +24,11 @@ LIMITE_CARACTERES = 20_000
 LIMITE_BLOCO = 30
 LIMITE_LINHA_PASTA = 80
 LIMITE_LINHAS_PASTA = 10
+LINGUAGENS_DE_COMANDO = {"", "bash", "sh", "shell", "zsh", "console"}
+EXTENSOES_DE_ARQUIVO = (
+    "md|mdx|txt|json|ya?ml|toml|ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|sh|css|html|svg|"
+    "png|lock|env|sql|cfg|ini"
+)
 
 # Arquivos que indicam projeto de desenvolvimento (lockfiles incluídos).
 MARCADORES_DEV = [
@@ -45,7 +49,7 @@ ARQUIVOS_DE_PRONTO = [
 
 # Comandos de instalação e de scripts padrão que não aparecem em "scripts" do package.json.
 BUILTIN_PM = {
-    "npm install", "npm i", "npm ci", "npm test", "npm start", "npm stop", "npm restart",
+    "npm install", "npm i", "npm ci", "npm test", "npm t", "npm start", "npm stop", "npm restart",
     "pnpm install", "pnpm i", "yarn install", "bun install",
 }
 
@@ -58,25 +62,34 @@ FRASES_GENERICAS = [
 # Padrões de segredo. O valor nunca é impresso, só o tipo e a linha.
 SEGREDOS = [
     ("chave da Anthropic", re.compile(r"sk-ant-[A-Za-z0-9_-]{10,}")),
-    ("chave da OpenAI", re.compile(r"sk-[A-Za-z0-9]{20,}")),
+    ("chave da OpenAI", re.compile(r"sk-(?:proj-)?[A-Za-z0-9_-]{20,}")),
+    ("chave Stripe", re.compile(r"(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{10,}")),
     ("chave AWS", re.compile(r"AKIA[0-9A-Z]{16}")),
-    ("token do GitHub", re.compile(r"(ghp_|github_pat_)[A-Za-z0-9_]{20,}")),
+    ("token do GitHub", re.compile(r"(?:ghp|gho|github_pat)_[A-Za-z0-9_]{20,}")),
+    ("token do Slack", re.compile(r"xox[abprs]-[A-Za-z0-9-]{10,}")),
+    ("chave do Google", re.compile(r"AIza[0-9A-Za-z_-]{35}")),
+    ("JWT", re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")),
     ("chave privada", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
-    ("senha ou token em texto", re.compile(r"(?i)\b(password|passwd|senha|secret|api[_-]?key|token)\s*[:=]\s*\S{6,}")),
+    # Exige um dígito no valor: "Senha: mínimo 8 caracteres" não casa.
+    ("senha ou token em texto", re.compile(
+        r"(?i)(?<![A-Za-z0-9])(password|passwd|senha|secret|api[_-]?key|token)\s*[:=]\s*(?=\S*\d)\S{8,}")),
 ]
 
-# Árvore de diretórios: ├── └── │──, a versão ASCII do tree e o formato "+--".
-ARVORE = re.compile(r"^\s*(?:[├└│]\s?──|[├└│]─|\|\s?--(?!-)|`--|\+--)\s*\S")
+# Árvore: ├── └── com ou sem o recuo │, a versão ASCII do tree e o formato "+--".
+# Tabela markdown como |--|--| fica de fora porque tem mais de um "|".
+ARVORE = re.compile(r"^\s*(?:[│ ]*[├└]─|\|\s?--(?!-)[^|]*$|`--|\+--)")
 TITULO_EXEMPLO = re.compile(r"^#{1,6}\s*(exemplos?|examples?)\b", re.IGNORECASE)
 PALAVRA_EXEMPLO = re.compile(r"\b(exemplos?|examples?)\b", re.IGNORECASE)
 CERCA = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
-COMANDO_PM = re.compile(r"^(npm|pnpm|yarn|bun|make)\b")
-COMANDO_OUTRO = re.compile(r"^(pytest|uv|ruff|go|cargo|mvn|gradle|tsc|eslint|vitest|jest)\b")
-PASTA_CRASE = re.compile(r"`[\w.\-]+/[\w./\-]*`")
-PASTA_SOLTA = re.compile(r"(?<![\w/])[\w.\-]+/(?=[\s`,.;:)]|$)")
+COMANDO_PM = re.compile(r"^(npm|pnpm|yarn|bun|make)(\s|$)")
+COMANDO_OUTRO = re.compile(r"^(pytest|uv|ruff|go|cargo|mvn|gradle|tsc|eslint|vitest|jest|npx)(\s|$)")
+COMANDO_PYTHON = re.compile(r"^python3?\s+-m\s+(pytest|unittest)(\s|$)")
+PASTA_CRASE = re.compile(r"`[A-Za-z0-9_][\w.\-]*(?:/[\w.\-]+)*/`")
+PASTA_SOLTA = re.compile(r"(?<![\w/.\-])[A-Za-z0-9_][\w.\-]*/(?=[\s`,.;:)]|$)")
 PALAVRA_PASTA = re.compile(r"\b(pastas?|diret[óo]rios?|folders?|director(?:y|ies))\b", re.IGNORECASE)
-REF_CAMINHO = re.compile(r"`([\w.\-]+(?:/[\w.\-]+)*\.[A-Za-z0-9]{1,5}|[\w.\-]+/[\w.\-/]*)`")
-IMPORTACAO = re.compile(r"(?<![\w`@.])@((?:\.{0,2}/|~/)?[\w@.~/-]*[\w])")
+REF_ARQUIVO = re.compile(r"`((?:[\w.\-]+/)*[\w.\-]+\.(?:%s))`" % EXTENSOES_DE_ARQUIVO)
+REF_PASTA = re.compile(r"`((?:[\w.\-]+/)+)`")
+IMPORTACAO = re.compile(r"(?<![\w`@.])@((?:\.{1,2}/|~/)?[\w@.~/-]*[\w])")
 
 
 def ler(caminho):
@@ -96,33 +109,69 @@ def cadeia(raiz):
         atual = pai
 
 
-def claude_md_na_cadeia(raiz):
+def e_so_import_de_agents(caminho):
+    """CLAUDE.md que só importa @AGENTS.md, ou que é link para outro arquivo: não bloqueia o AGENTS.md."""
+    if os.path.islink(caminho):
+        return True
+    nao_vazias = [l.strip() for l in ler(caminho) if l.strip()]
+    return bool(nao_vazias) and all(re.fullmatch(r"@(\./)?AGENTS\.md", l) for l in nao_vazias)
+
+
+def claude_md_bloqueante(raiz):
+    """CLAUDE.md, CLAUDE.local.md ou .claude/CLAUDE.md na pasta de trabalho ou acima.
+
+    Pela documentação, o AGENTS.md é ignorado quando um deles existe. O ~/.claude/CLAUDE.md
+    global não entra; só o .claude/CLAUDE.md da própria pasta de trabalho ou de uma pasta acima.
+    """
+    home = os.path.realpath(os.path.expanduser("~"))
     achados = []
     for pasta in cadeia(raiz):
         for candidato in ("CLAUDE.md", "CLAUDE.local.md", os.path.join(".claude", "CLAUDE.md")):
+            if candidato.startswith(".claude") and pasta == home:
+                continue
             caminho = os.path.join(pasta, candidato)
-            if os.path.isfile(caminho):
+            if os.path.isfile(caminho) and not (
+                    os.path.basename(caminho) == "CLAUDE.md" and e_so_import_de_agents(caminho)):
                 achados.append(caminho)
     return achados
 
 
-def onde_carrega(caminho, raiz, cadeia_claude):
+def onde_carrega(caminho, raiz, bloqueantes):
     """Pista de quando o Claude Code lê o arquivo. Confirme na documentação se houver dúvida."""
     real = os.path.realpath(caminho)
-    # Um CLAUDE.md que é link para este mesmo arquivo não conta como outro arquivo.
-    tem_claude_md = any(os.path.realpath(c) != real for c in cadeia_claude)
     pasta = os.path.dirname(real)
     if os.path.basename(pasta) == ".claude":
         pasta = os.path.dirname(pasta)
     no_inicio = pasta in set(cadeia(raiz))
+    bloqueado = any(os.path.realpath(b) != real for b in bloqueantes)
+    # Um CLAUDE.md próprio da pasta também bloqueia o AGENTS.md dela, salvo se só importar o AGENTS.md.
+    proprio = [n for n in ("CLAUDE.md", "CLAUDE.local.md")
+               if os.path.isfile(os.path.join(pasta, n)) and os.path.realpath(
+                   os.path.join(pasta, n)) != real
+               and not (n == "CLAUDE.md" and e_so_import_de_agents(os.path.join(pasta, n)))]
 
     if os.path.basename(caminho) == "AGENTS.md":
+        if bloqueado or proprio:
+            return "ignorado: há CLAUDE.md na pasta de trabalho ou acima"
         if not no_inicio:
             return "sob demanda"
-        if tem_claude_md:
-            return "ignorado: há CLAUDE.md na pasta de trabalho ou acima"
         return "no início"
-    return "no início" if no_inicio else "sob demanda"
+    if no_inicio:
+        return "no início"
+    return "sob demanda"
+
+
+def ancestrais_ate_repositorio(raiz):
+    """Pastas acima da de trabalho, até a raiz do repositório git (inclusive) ou a pasta pessoal."""
+    home = os.path.realpath(os.path.expanduser("~"))
+    acima = []
+    for pasta in cadeia(raiz)[1:]:
+        if pasta == home:
+            break
+        acima.append(pasta)
+        if os.path.exists(os.path.join(pasta, ".git")):
+            break
+    return acima
 
 
 def listar(raiz):
@@ -135,7 +184,14 @@ def listar(raiz):
             if nome in NOMES:
                 achados.append(os.path.join(dp, nome))
 
-    cadeia_claude = claude_md_na_cadeia(raiz)
+    # Arquivos das pastas acima da de trabalho também carregam no início (ex.: rodar de apps/web).
+    for pasta in ancestrais_ate_repositorio(raiz):
+        for nome in NOMES:
+            p = os.path.join(pasta, nome)
+            if os.path.isfile(p):
+                achados.append(p)
+
+    bloqueantes = claude_md_bloqueante(raiz)
     itens, vistos = [], set()
     # Arquivos de verdade primeiro; um link simbólico para o mesmo conteúdo é ignorado.
     for caminho in sorted(achados, key=lambda c: (os.path.islink(c), c)):
@@ -149,7 +205,7 @@ def listar(raiz):
             "tipo": os.path.basename(caminho),
             "linhas": len(linhas),
             "caracteres": len("\n".join(linhas)),
-            "quando_carrega": onde_carrega(caminho, raiz, cadeia_claude),
+            "quando_carrega": onde_carrega(caminho, raiz, bloqueantes),
         }
         if os.path.islink(caminho):
             item["link_para"] = os.path.relpath(real, raiz).replace(os.sep, "/")
@@ -157,22 +213,42 @@ def listar(raiz):
 
     return {
         "pasta_de_trabalho": os.path.realpath(raiz),
-        "claude_md_na_cadeia": cadeia_claude,
+        "claude_md_bloqueantes": bloqueantes,
         "arquivos": itens,
     }
 
 
+def scripts_de(pasta):
+    """Nomes de scripts do package.json da pasta, se houver e se o JSON for legível."""
+    pacote = os.path.join(pasta, "package.json")
+    if not os.path.isfile(pacote):
+        return []
+    try:
+        with open(pacote, encoding="utf-8-sig") as f:
+            dados = json.load(f)
+    except (ValueError, OSError):
+        return []
+    scripts = dados.get("scripts") if isinstance(dados, dict) else None
+    return list(scripts.keys()) if isinstance(scripts, dict) else []
+
+
+def candidatos_de(scripts, alvos):
+    candidatos = set(BUILTIN_PM)
+    for nome in scripts:
+        candidatos.update({f"npm run {nome}", f"pnpm run {nome}", f"bun run {nome}",
+                           f"yarn run {nome}", f"pnpm {nome}", f"yarn {nome}"})
+        # "npm test" equivale a "npm run test"; só os nomes padrão do npm valem sem "run".
+        if nome in {"test", "start", "stop", "restart"}:
+            candidatos.add(f"npm {nome}")
+    if alvos:
+        candidatos.add("make")  # alvo padrão
+    candidatos.update(f"make {t}" for t in alvos)
+    return candidatos
+
+
 def projeto(raiz):
     presentes = [m for m in MARCADORES_DEV if os.path.exists(os.path.join(raiz, m))]
-
-    scripts = []
-    pacote = os.path.join(raiz, "package.json")
-    if os.path.isfile(pacote):
-        try:
-            with open(pacote, encoding="utf-8") as f:
-                scripts = list((json.load(f).get("scripts") or {}).keys())
-        except (ValueError, OSError):
-            scripts = []
+    scripts = scripts_de(raiz)
 
     makefile_nome, alvos = None, []
     for nome in ("Makefile", "makefile", "GNUmakefile"):
@@ -181,19 +257,13 @@ def projeto(raiz):
             break
     if makefile_nome:
         for linha in ler(os.path.join(raiz, makefile_nome)):
-            # "alvo:" seguido de espaço ou fim de linha. Fica de fora "CC := gcc", "X:=1" e "http://".
-            m = re.match(r"^([A-Za-z][\w.-]*)\s*:(?=\s|$)", linha)
+            # "alvo1 alvo2:" ou "alvo::" seguido de espaço ou fim de linha. Fora: "CC := gcc",
+            # "X:=1", "http://x:" e linhas de receita com tabulação.
+            m = re.match(r"^([A-Za-z][\w.\- ]*?)\s*::?(?=\s|$)", linha)
             if m:
-                alvos.append(m.group(1))
+                alvos.extend(m.group(1).split())
 
-    candidatos = set(BUILTIN_PM)
-    for nome in scripts:
-        candidatos.update({f"npm run {nome}", f"pnpm run {nome}", f"bun run {nome}",
-                           f"pnpm {nome}", f"yarn {nome}"})
-        # "npm test" equivale a "npm run test"; só os nomes padrão do npm valem sem "run".
-        if nome in {"test", "start", "stop", "restart"}:
-            candidatos.add(f"npm {nome}")
-    candidatos.update(f"make {t}" for t in alvos)
+    candidatos = candidatos_de(scripts, alvos)
 
     verificacao = any(t in ALVOS_DE_VERIFICACAO for t in alvos)
     pronto = [a for a in ARQUIVOS_DE_PRONTO if os.path.exists(os.path.join(raiz, a))]
@@ -215,28 +285,47 @@ def projeto(raiz):
     }
 
 
+def avaliar_comando(cmd, candidatos):
+    """Um comando, depois de partido em &&, ;, || e |. existe: True, False, ou None se não der para conferir."""
+    partes = [p for p in re.split(r"\s*(?:&&|\|\||;|\|)\s*", cmd) if p]
+    resultado = []
+    for parte in partes:
+        if COMANDO_PM.match(parte):
+            # "make" sozinho é o alvo padrão; "make sure" não vira alvo só por começar com "make ".
+            existe = any(parte == c or (c != "make" and parte.startswith(c + " ")) for c in candidatos)
+            resultado.append((parte, existe))
+        elif COMANDO_OUTRO.match(parte) or COMANDO_PYTHON.match(parte):
+            resultado.append((parte, None))  # ferramenta que o script não confere
+    return resultado
+
+
 def arquivo(caminho, raiz, proj):
     linhas = ler(caminho)
     texto = "\n".join(linhas)
+    base = os.path.dirname(os.path.realpath(caminho))
 
     # Blocos de código cercados por ``` ou ~~~. O fechamento usa o mesmo caractere e tamanho igual ou maior.
+    # Uma linha com ``` e crase depois não abre bloco (CommonMark).
     blocos, dentro, aberto = [], [False] * len(linhas), None
     for i, linha in enumerate(linhas):
         if aberto is None:
             m = CERCA.match(linha)
-            if m:
-                aberto = (i, m.group(1)[0], len(m.group(1)))
+            if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+                info = m.group(2).strip().split()
+                aberto = (i, m.group(1)[0], len(m.group(1)), info[0].lower() if info else "")
             continue
-        inicio, caractere, tamanho = aberto
+        inicio, caractere, tamanho, lingua = aberto
         s = linha.strip()
         if s and set(s) == {caractere} and len(s) >= tamanho:
-            blocos.append({"linha": inicio + 1, "tamanho": i - inicio - 1, "fechado": True})
+            blocos.append({"linha": inicio + 1, "tamanho": i - inicio - 1, "fechado": True,
+                           "linguagem": lingua})
             for j in range(inicio, i + 1):
                 dentro[j] = True
             aberto = None
     if aberto is not None:
         inicio = aberto[0]
-        blocos.append({"linha": inicio + 1, "tamanho": len(linhas) - inicio - 1, "fechado": False})
+        blocos.append({"linha": inicio + 1, "tamanho": len(linhas) - inicio - 1, "fechado": False,
+                       "linguagem": aberto[3]})
         for j in range(inicio, len(linhas)):
             dentro[j] = True
 
@@ -255,22 +344,21 @@ def arquivo(caminho, raiz, proj):
 
     arvore = [i for i, l in enumerate(linhas, start=1) if ARVORE.search(l)]
 
-    # Comandos: crases em texto corrido e linhas dentro de blocos (sem o "$ " do início).
-    candidatos = set(proj["comandos_candidatos"])
+    # Comandos: crases em texto corrido e linhas de blocos de shell (sem o "$ " do início).
+    candidatos = set(proj["comandos_candidatos"]) | candidatos_de(scripts_de(base), [])
     comandos = []
     for i, linha in enumerate(linhas):
         if dentro[i]:
-            trechos = [re.sub(r"^\s*\$\s+", "", linha).strip()]
+            # Só conta dentro de blocos de shell; texto de exemplo em outra linguagem fica de fora.
+            bloco = next(b for b in blocos if b["linha"] <= i + 1 <= b["linha"] + b["tamanho"] + 1)
+            trechos = ([re.sub(r"^\s*\$\s+", "", linha).strip()]
+                       if bloco["linguagem"] in LINGUAGENS_DE_COMANDO else [])
         else:
             trechos = re.findall(r"`([^`\n]+)`", linha)
         for trecho in trechos:
             cmd = " ".join(trecho.split())
-            if COMANDO_PM.match(cmd):
-                existe = any(cmd == c or cmd.startswith(c + " ") for c in candidatos)
-                comandos.append({"linha": i + 1, "comando": cmd, "existe": existe})
-            elif COMANDO_OUTRO.match(cmd):
-                # Ferramentas que o script não verifica: existe fica None.
-                comandos.append({"linha": i + 1, "comando": cmd, "existe": None})
+            for parte, existe in avaliar_comando(cmd, candidatos):
+                comandos.append({"linha": i + 1, "comando": parte, "existe": existe})
 
     pastas = []
     for i, linha in enumerate(linhas, start=1):
@@ -280,13 +368,10 @@ def arquivo(caminho, raiz, proj):
             pastas.append({"linha": i, "tamanho": len(linha.strip())})
 
     referencias = []
-    base = os.path.dirname(os.path.realpath(caminho))
     for i, linha in enumerate(linhas, start=1):
         if dentro[i - 1]:
             continue
-        for alvo in REF_CAMINHO.findall(linha):
-            if COMANDO_PM.match(alvo):
-                continue
+        for alvo in REF_ARQUIVO.findall(linha) + [a.rstrip("/") for a in REF_PASTA.findall(linha)]:
             existe = os.path.exists(os.path.join(raiz, alvo)) or os.path.exists(os.path.join(base, alvo))
             referencias.append({"linha": i, "caminho": alvo, "existe": existe})
 
@@ -296,6 +381,9 @@ def arquivo(caminho, raiz, proj):
             continue
         sem_crases = re.sub(r"`[^`]*`", "", linha)
         for alvo in IMPORTACAO.findall(sem_crases):
+            # @alfredo ou @types/node são menções, não imports: só conta caminho com extensão ou ./, ../, ~/.
+            if not (re.search(r"\.[A-Za-z0-9]{1,5}$", alvo) or alvo.startswith(("./", "../", "~/"))):
+                continue
             p = os.path.normpath(os.path.join(base, os.path.expanduser(alvo)))
             existe = os.path.isfile(p)
             tamanho = len("\n".join(ler(p))) if existe else None
@@ -326,7 +414,7 @@ def arquivo(caminho, raiz, proj):
         "referencias_de_caminho": referencias,
         "importacoes": importacoes,
         "segredos_suspeitos": segredos,
-        "quando_carrega": onde_carrega(caminho, raiz, claude_md_na_cadeia(raiz)),
+        "quando_carrega": onde_carrega(caminho, raiz, claude_md_bloqueante(raiz)),
     }
 
 
