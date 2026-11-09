@@ -1,10 +1,15 @@
 export type Percent = number | null
 
-// Os envios do aluno na sessão: quantos e quantos caracteres ao todo, para comparar tamanho e quantidade.
-export type Envios = { quantidade: number; caracteres: number }
-
 declare module 'claude-code' {
   interface PluginState {
-    'monitor-de-contexto': { percent: Percent; mensagens: number | null; envios: Envios }
+    'monitor-de-contexto': {
+      percent: Percent
+      total: number | null
+      mensagens: number | null
+      // Quantos envios do aluno na sessão, para escolher a frase.
+      envios: number
+      // Tamanho em caracteres dos últimos três envios.
+      recentes: number[]
+    }
   }
 }

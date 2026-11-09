@@ -1,7 +1,9 @@
 import { expect, test } from 'claude-code/testing'
 
-import { FRASES, FRASES_CURTAS } from '../hooks/frases'
-import { cor, frase, nivel } from '../hooks/register'
+import { contextQuotes, shortMessageQuotes } from '../utils/quotes'
+import { nivel } from '../utils/levels'
+import { cor } from '../utils/colors'
+import { frase } from '../utils/phrases'
 
 const DICA = {
   plugin: 'monitor-de-contexto',
@@ -20,7 +22,7 @@ test('as barras, a porcentagem e a frase aparecem acima do prompt', async ($, on
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...DICA, surface })
     expect((await ui.find({ type: 'Text', text: /48%/ }))?.text).toBe('48%')
-    expect((await ui.find({ type: 'Text', text: /tranquilo/ }))?.text).toBe(FRASES[1][0])
+    expect((await ui.find({ type: 'Text', text: /tranquilo/ }))?.text).toBe(contextQuotes[1][0])
     await ui.unmount()
   }
 })
@@ -39,19 +41,19 @@ test('a cor muda por faixa', async () => {
 })
 
 test('cada nível tem cerca de 20 frases curtas o bastante', async () => {
-  expect(FRASES.length).toBe(11)
-  expect(FRASES_CURTAS.length).toBe(6)
-  for (const lista of [...FRASES, ...FRASES_CURTAS]) {
+  expect(contextQuotes.length).toBe(11)
+  expect(shortMessageQuotes.length).toBe(6)
+  for (const lista of [...contextQuotes, ...shortMessageQuotes]) {
     expect(lista.length).toBe(20)
     expect(lista.every(f => f.length <= 72 && !f.includes('chat novo'))).toBe(true)
   }
 })
 
 test('a frase troca a cada envio e muda de lista com mensagens curtas', async () => {
-  const curtas = { quantidade: 4, caracteres: 200 }
-  const longas = { quantidade: 4, caracteres: 4000 }
-  expect(frase(60_000, curtas)).toBe(FRASES_CURTAS[1][4])
-  expect(frase(60_000, longas)).toBe(FRASES[1][4])
-  expect(frase(60_000, { quantidade: 5, caracteres: 5000 })).toBe(FRASES[1][5])
-  expect(frase(400_000, curtas)).toBe(FRASES[8][4])
+  const recentesCurtas = [100, 100, 100] // 25 tokens cada
+  const recentesLongas = [2000, 2000, 2000] // 500 tokens cada
+  expect(frase(1, 4, recentesCurtas)).toBe(shortMessageQuotes[1][4])
+  expect(frase(1, 4, recentesLongas)).toBe(contextQuotes[1][4])
+  expect(frase(1, 5, recentesLongas)).toBe(contextQuotes[1][5])
+  expect(frase(8, 4, recentesCurtas)).toBe(contextQuotes[8][4])
 })

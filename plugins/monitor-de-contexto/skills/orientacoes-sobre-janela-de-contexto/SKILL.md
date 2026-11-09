@@ -1,6 +1,6 @@
 ---
 name: orientacoes-sobre-janela-de-contexto
-description: Responde perguntas sobre como funciona a janela de contexto e sobre o plugin Monitor de Contexto em si, o que ele mostra, o que as barras e a porcentagem significam, como os níveis e os alertas são calculados e o que fazer quando aparece um aviso. Use quando alguém perguntar como funciona a janela de contexto, o que é o plugin, para que serve, por que a barra mudou de cor ou o que significa um alerta.
+description: Responde perguntas sobre como funciona a janela de contexto e sobre o plugin Monitor de Contexto em si, o que ele mostra, o que as barras e a porcentagem significam, como os níveis e os alertas são calculados e o que fazer quando aparece um aviso. Use quando alguém perguntar como funciona a janela de contexto, o que é o plugin, para que serve, por que a barra mudou de cor, o que significa um alerta ou como o CLAUDE.md e as regras (.claude/rules) entram na janela.
 ---
 
 # Orientações sobre a janela de contexto
@@ -20,6 +20,21 @@ A janela de contexto guarda tudo que o Claude sabe da sessão: suas instruções
 - Um subagente faz a pesquisa numa janela separada. Só o resumo e um pequeno bloco de metadados voltam para a conversa principal, então leituras grandes não ocupam a sua janela.
 
 **Custo por envio:** cada mensagem sua faz o Claude reler a janela inteira. Por isso o contexto cheio pesa em todo envio, não só no último.
+
+## CLAUDE.md e regras na janela
+
+O `CLAUDE.md` e as regras do Claude são instruções persistentes. Elas ocupam a janela, e a forma como entram depende do tipo:
+
+- **No início da sessão:** os `CLAUDE.md` e `CLAUDE.local.md` da pasta de trabalho e das pastas acima dela, as regras de `.claude/rules/` sem `paths:` (com a mesma prioridade do `.claude/CLAUDE.md`), as regras do usuário em `~/.claude/rules/` e a memória automática (só as primeiras 200 linhas ou 25 KB do `MEMORY.md`).
+- **Sob demanda:** o `CLAUDE.md` de uma subpasta entra quando o Claude lê ou edita um arquivo dela. Uma regra com `paths:` entra quando um arquivo que casa com o padrão é aberto.
+- **Imports com `@caminho`:** o arquivo importado entra junto com o que o importa. Separar em vários arquivos organiza, mas não reduz o custo.
+- **Não é imposição:** regra é contexto que o Claude tenta seguir, não uma trava. Para bloquear uma ação sempre, use um hook.
+
+Tamanho recomendado: menos de 200 linhas por `CLAUDE.md`. Acima disso, consome mais janela e a aderência cai. Em arquivos de subpasta e regras sob demanda, o Claude recebe só o começo quando o arquivo passa do limite por arquivo (40 mil caracteres numa janela de 200 mil tokens; 150 mil ou 200 mil caracteres numa janela de 1 milhão, conforme o modelo). Um arquivo acima de 4 MiB não carrega.
+
+Para o plugin, vale saber: as regras e os `CLAUDE.md` aparecem como categoria própria no `/context` (em `Memory files`), então entram no total de tokens, mas não na linha `Messages`. Eles não mudam o nível das barras, e podem empurrar o total para uma faixa de alerta.
+
+Para ver o que carregou, use `/context all` e confira a lista `Memory files`. Para abrir e editar, use `/memory`.
 
 ## O que sobrevive à compactação
 
@@ -54,7 +69,7 @@ O Monitor de Contexto mostra, acima do prompt, quanto da janela de contexto da s
 
 ## O que cada parte mostra
 
-- **Barras**: são 10 blocos. Quanto mais cheios, mais contexto usado. A cor acompanha o nível.
+- **Barras**: são 4 barras, e cada uma vale 25% da porcentagem. Quanto mais cheias, mais contexto usado. A cor acompanha o nível.
 - **Porcentagem**: é o `context.percent` que o Claude Code calcula para a janela.
 - **Frase de apoio**: em cinza. Sem alerta, ela muda com o nível e com o tamanho dos seus envios. Com alerta, mostra a orientação do aviso.
 

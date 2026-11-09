@@ -1,1 +1,17 @@
-{"name": "monitor-de-contexto", "description": "Mostra embaixo do prompt quanto da janela de contexto já foi usado, em 4 barras, com a porcentagem e uma dica", "version": "0.0.1", "author": {"name": "Alfredo Gazperi"}, "types": "./types/index.d.ts"}
+{
+  "name": "monitor-de-contexto",
+  "displayName": "Monitor de Contexto",
+  "version": "0.0.2",
+  "description": "Mostra acima do prompt quanto da janela de contexto já foi usado, em 4 barras, com a porcentagem e uma dica",
+  "author": {
+    "name": "Alfredo Gazperi",
+    "email": "falecom@humanoensinando.ai",
+    "url": "https://humanoensinando.ai"
+  },
+  "license": "MIT",
+  "homepage": "https://humanoensinando.ai",
+  "repository": "https://github.com/HumanoEnsinandoAI/humano-e-sua-caixa-de-ferramentas",
+  "keywords": ["contexto", "janela-de-contexto", "barra-de-status"],
+  "defaultEnabled": false,
+  "types": "./types/index.d.ts"
+}
