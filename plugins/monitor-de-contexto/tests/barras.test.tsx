@@ -4,7 +4,7 @@ import { FRASES, FRASES_CURTAS } from '../hooks/frases'
 import { cor, frase, nivel } from '../hooks/register'
 
 const DICA = {
-  plugin: 'humano-janela-contexto',
+  plugin: 'monitor-de-contexto',
   component: 'AbovePrompt',
   props: { hasSurvey: false },
 } as const

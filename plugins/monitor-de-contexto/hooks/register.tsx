@@ -5,9 +5,9 @@ import type { Envios } from '../types'
 
 import { FRASES, FRASES_CURTAS } from './frases'
 
-const percent = atom({ plugin: 'humano-janela-contexto', key: 'percent' } as const, null)
-const mensagens = atom({ plugin: 'humano-janela-contexto', key: 'mensagens' } as const, null)
-const envios = atom({ plugin: 'humano-janela-contexto', key: 'envios' } as const, { quantidade: 0, caracteres: 0 })
+const percent = atom({ plugin: 'monitor-de-contexto', key: 'percent' } as const, null)
+const mensagens = atom({ plugin: 'monitor-de-contexto', key: 'mensagens' } as const, null)
+const envios = atom({ plugin: 'monitor-de-contexto', key: 'envios' } as const, { quantidade: 0, caracteres: 0 })
 
 // As barras enchem pela janela inteira; a cor vem da faixa do contexto.
 const BARRAS = 4

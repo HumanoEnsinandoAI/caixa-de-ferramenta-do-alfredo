@@ -1,0 +1,1 @@
+{"name": "monitor-de-contexto", "description": "Mostra embaixo do prompt quanto da janela de contexto já foi usado, em 4 barras, com a porcentagem e uma dica", "version": "0.0.1", "author": {"name": "Alfredo Gazperi"}, "types": "./types/index.d.ts"}

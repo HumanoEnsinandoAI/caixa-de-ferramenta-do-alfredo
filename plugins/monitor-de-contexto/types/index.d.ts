@@ -5,6 +5,6 @@ export type Envios = { quantidade: number; caracteres: number }
 
 declare module 'claude-code' {
   interface PluginState {
-    'humano-janela-contexto': { percent: Percent; mensagens: number | null; envios: Envios }
+    'monitor-de-contexto': { percent: Percent; mensagens: number | null; envios: Envios }
   }
 }

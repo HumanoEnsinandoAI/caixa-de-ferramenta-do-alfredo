@@ -8,13 +8,13 @@ O marketplace de plugins do [humanoensinando.ai](https://humanoensinando.ai), do
 claude plugin marketplace add HumanoEnsinandoAI/humano-e-sua-caixa-de-ferramentas
 ```
 
-Para receber as novidades: `claude plugin marketplace update humano-e-sua-caixa-de-ferramentas`.
+Para receber as novidades: `claude plugin marketplace update caixa-de-ferramentas-do-alfredo`.
 
 ## O que tem aqui
 
 | Plugin | O que faz |
 |---|---|
-| `humano-janela-contexto` | Mostra embaixo do prompt quanto da janela de contexto já foi usado, em 4 barras que mudam de cor, com a porcentagem e uma dica. Não precisa de conta. Instale com `claude plugin install humano-janela-contexto@humano-e-sua-caixa-de-ferramentas`. |
+| `monitor-de-contexto` | Mostra embaixo do prompt quanto da janela de contexto já foi usado, em 4 barras que mudam de cor, com a porcentagem e uma dica. Não precisa de conta. Instale com `claude plugin install monitor-de-contexto@caixa-de-ferramentas-do-alfredo`. |
 
 Mais plugins entram aqui com o tempo.
 

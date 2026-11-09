@@ -1,5 +1,5 @@
 {
-  "name": "humano-e-sua-caixa-de-ferramentas",
+  "name": "caixa-de-ferramentas-do-alfredo",
   "owner": {
     "name": "Alfredo Gazperi"
   },
@@ -8,8 +8,8 @@
   },
   "plugins": [
     {
-      "name": "humano-janela-contexto",
-      "source": "./plugins/humano-janela-contexto",
+      "name": "monitor-de-contexto",
+      "source": "./plugins/monitor-de-contexto",
       "description": "Janela de contexto: mostra embaixo do prompt quanto da janela de contexto já foi usado, em 4 barras, com a porcentagem e uma dica."
     }
   ]
