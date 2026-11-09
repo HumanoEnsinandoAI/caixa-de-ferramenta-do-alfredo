@@ -5,7 +5,7 @@ O marketplace de plugins do [humanoensinando.ai](https://humanoensinando.ai), do
 ## Instalar
 
 ```
-claude plugin marketplace add HumanoEnsinandoAI/humano-e-sua-caixa-de-ferramentas
+claude plugin marketplace add HumanoEnsinandoAI/caixa-de-ferramenta-do-alfredo
 ```
 
 Para receber as novidades: `claude plugin marketplace update caixa-de-ferramentas-do-alfredo`.

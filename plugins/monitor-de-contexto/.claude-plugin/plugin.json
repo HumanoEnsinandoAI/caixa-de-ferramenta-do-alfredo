@@ -9,7 +9,7 @@
   },
   "license": "MIT",
   "homepage": "https://humanoensinando.ai",
-  "repository": "https://github.com/HumanoEnsinandoAI/humano-e-sua-caixa-de-ferramentas",
+  "repository": "https://github.com/HumanoEnsinandoAI/caixa-de-ferramenta-do-alfredo",
   "keywords": ["contexto", "janela-de-contexto", "barra-de-status"],
   "defaultEnabled": true,
   "types": "./types/index.d.ts"
