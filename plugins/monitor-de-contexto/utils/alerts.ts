@@ -47,5 +47,5 @@ export const frasesDeAlerta: Record<Exclude<Alerta, 'livre'>, string> = {
   aproximando: 'Suas últimas mensagens foram curtas e a janela está quase no limite',
   atencao: 'A janela já está grande e vale compactar quando a tarefa terminar',
   curta: 'Juntar o que falta num envio só evita reler a janela inteira',
-  compactar: 'A janela passou de 600 mil tokens e precisa ser compactada agora',
+  compactar: 'A janela chegou a 600 mil tokens e precisa ser compactada agora',
 }

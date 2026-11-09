@@ -11,6 +11,6 @@
   "homepage": "https://humanoensinando.ai",
   "repository": "https://github.com/HumanoEnsinandoAI/humano-e-sua-caixa-de-ferramentas",
   "keywords": ["contexto", "janela-de-contexto", "barra-de-status"],
-  "defaultEnabled": false,
+  "defaultEnabled": true,
   "types": "./types/index.d.ts"
 }

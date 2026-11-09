@@ -10,6 +10,10 @@ declare module 'claude-code' {
       envios: number
       // Tamanho em caracteres dos últimos três envios.
       recentes: number[]
+      // Quantos agentes em paralelo ainda estão trabalhando.
+      agentes: number
+      // O ícone está no fade out, depois de o último agente concluir.
+      saindo: boolean
     }
   }
 }
