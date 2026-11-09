@@ -1,51 +1,51 @@
-import { curtas, curtoEm } from './levels'
+import { hasShortStreak, isShort } from './levels'
 
-// Limites em tokens do total usado na janela (linha de contexto do /context).
-const APROXIMANDO = 200_000
-const ATENCAO = 250_000
-const COMPACTAR = 600_000
+// Token limits on the total used in the window (the context line of /context).
+const APPROACHING = 200_000
+const ATTENTION = 250_000
+const COMPACT = 600_000
 
-// A linha Messages precisa ser pelo menos esta fração do total para contar como "a maior parte".
-const METADE = 0.5
+// The Messages line must be at least this share of the total to count as "most of it".
+const HALF = 0.5
 
-export type Alerta = 'livre' | 'aproximando' | 'atencao' | 'curta' | 'compactar'
+export type Alert = 'free' | 'approaching' | 'attention' | 'short' | 'compact'
 
-export type Entrada = {
+export type Input = {
   total: number | null
-  mensagens: number | null
-  // Tamanho em caracteres dos últimos envios, do mais antigo ao mais recente.
-  recentes: number[]
+  messages: number | null
+  // Character length of the recent sends, oldest to newest.
+  recent: number[]
 }
 
-export const alerta = ({ total, mensagens, recentes }: Entrada): Alerta => {
+export const alert = ({ total, messages, recent }: Input): Alert => {
   if (total === null) {
-    return 'livre'
+    return 'free'
   }
 
-  if (total >= COMPACTAR) {
-    return 'compactar'
+  if (total >= COMPACT) {
+    return 'compact'
   }
 
-  if (total >= ATENCAO) {
-    if (mensagens === null || mensagens / total < METADE) {
-      return 'livre'
+  if (total >= ATTENTION) {
+    if (messages === null || messages / total < HALF) {
+      return 'free'
     }
 
-    const ultimo = recentes[recentes.length - 1]
-    return ultimo !== undefined && curtoEm(ultimo) ? 'curta' : 'atencao'
+    const last = recent[recent.length - 1]
+    return last !== undefined && isShort(last) ? 'short' : 'attention'
   }
 
-  if (total >= APROXIMANDO) {
-    return curtas(recentes) ? 'aproximando' : 'livre'
+  if (total >= APPROACHING) {
+    return hasShortStreak(recent) ? 'approaching' : 'free'
   }
 
-  return 'livre'
+  return 'free'
 }
 
-// Frases de apoio de cada alerta, todas com até 72 caracteres.
-export const frasesDeAlerta: Record<Exclude<Alerta, 'livre'>, string> = {
-  aproximando: 'Suas últimas mensagens foram curtas e a janela está quase no limite',
-  atencao: 'A janela já está grande e vale compactar quando a tarefa terminar',
-  curta: 'Juntar o que falta num envio só evita reler a janela inteira',
-  compactar: 'A janela chegou a 600 mil tokens e precisa ser compactada agora',
+// Support phrases for each alert, all up to 72 characters. They are shown to the user, so they stay in Portuguese.
+export const alertPhrases: Record<Exclude<Alert, 'free'>, string> = {
+  approaching: 'Suas últimas mensagens foram curtas e a janela está quase no limite',
+  attention: 'A janela já está grande e vale compactar quando a tarefa terminar',
+  short: 'Juntar o que falta num envio só evita reler a janela inteira',
+  compact: 'A janela chegou a 600 mil tokens e precisa ser compactada agora',
 }

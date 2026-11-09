@@ -1,4 +1,4 @@
-// Frases para quem vem mandando mensagens curtas. Só valem até o amarelo (níveis 0 a 5).
+// Phrases for users who keep sending short messages. Only used up to yellow (levels 0 to 5). The phrases stay in Portuguese.
 
 export const shortMessageQuotes: string[][] = [
   [

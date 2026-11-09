@@ -14,7 +14,7 @@ Para receber as novidades: `claude plugin marketplace update caixa-de-ferramenta
 
 | Plugin | O que faz |
 |---|---|
-| `monitor-de-contexto` | Mostra acima do prompt quanto da janela de contexto já foi usado, em 4 barras que mudam de cor, com a porcentagem e uma dica. Inclui a skill `termometro-de-agents-md`, que o Claude usa sozinho para checar se os AGENTS.md e CLAUDE.md do projeto estão bem escritos. Não precisa de conta. Instale com `claude plugin install monitor-de-contexto@caixa-de-ferramentas-do-alfredo`. |
+| `monitor-de-contexto` | Mostra acima do prompt quanto da janela de contexto já foi usado, em 4 barras que mudam de cor, com a porcentagem e uma dica. Inclui a skill `agents-md-thermometer`, que o Claude usa sozinho para checar se os AGENTS.md e CLAUDE.md do projeto estão bem escritos. Não precisa de conta. Instale com `claude plugin install monitor-de-contexto@caixa-de-ferramentas-do-alfredo`. |
 
 Mais plugins entram aqui com o tempo.
 

@@ -1,9 +1,10 @@
 import { contextQuotes, shortMessageQuotes } from './quotes'
-import { curtas } from './levels'
+import { hasShortStreak } from './levels'
 
-// Uma frase da lista do nível; troca a cada envio e fica parada entre um envio e outro. Até o amarelo (6 listas), quem vem mandando mensagens curtas recebe a lista que sugere o microfone.
-export const frase = (n: number, enviados: number, recentes: number[]) => {
-  const lista = (curtas(recentes) ? shortMessageQuotes[n] : undefined) ?? contextQuotes[n] ?? []
+// One phrase from the level's list; it changes on each send and stays still between sends.
+// Up to yellow (6 lists), whoever keeps sending short messages gets the list that suggests the microphone.
+export const phrase = (level: number, sends: number, recent: number[]) => {
+  const list = (hasShortStreak(recent) ? shortMessageQuotes[level] : undefined) ?? contextQuotes[level] ?? []
 
-  return lista[enviados % lista.length] ?? ''
+  return list[sends % list.length] ?? ''
 }

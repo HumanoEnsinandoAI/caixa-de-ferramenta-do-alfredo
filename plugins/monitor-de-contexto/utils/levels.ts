@@ -1,15 +1,16 @@
-// Níveis pela linha Messages do /context: um a cada 50k tokens, até 500k, o teto combinado para a compactação.
-const PASSO = 50_000
-const TETO = 500_000
-const NIVEIS = TETO / PASSO
+// Levels from the Messages line of /context: one per 50k tokens, up to 500k, the combined ceiling before compaction.
+const STEP = 50_000
+const CEILING = 500_000
+const LEVELS = CEILING / STEP
 
-export const nivel = (tokens: number) => Math.min(NIVEIS, Math.floor(tokens / PASSO))
+export const level = (tokens: number) => Math.min(LEVELS, Math.floor(tokens / STEP))
 
-// Um envio é curto quando fica abaixo de 30 tokens (4 caracteres por token).
-export const CURTA = 30
-const SEQUENCIA = 3
+// A send is short when it is under 30 tokens (4 characters per token).
+export const SHORT_LIMIT = 30
+const SEQUENCE = 3
 
-export const curtoEm = (caracteres: number) => caracteres / 4 < CURTA
+export const isShort = (characters: number) => characters / 4 < SHORT_LIMIT
 
-// Padrão de mensagens curtas: os três últimos envios são todos curtos. Usado pelo alerta e pela frase.
-export const curtas = (recentes: number[]) => recentes.length >= SEQUENCIA && recentes.slice(-SEQUENCIA).every(curtoEm)
+// Short-message pattern: the last three sends are all short. Used by the alert and by the phrase.
+export const hasShortStreak = (recent: number[]) =>
+  recent.length >= SEQUENCE && recent.slice(-SEQUENCE).every(isShort)

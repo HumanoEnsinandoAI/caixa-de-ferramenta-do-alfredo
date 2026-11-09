@@ -5,15 +5,15 @@ declare module 'claude-code' {
     'monitor-de-contexto': {
       percent: Percent
       total: number | null
-      mensagens: number | null
-      // Quantos envios do aluno na sessão, para escolher a frase.
-      envios: number
-      // Tamanho em caracteres dos últimos três envios.
-      recentes: number[]
-      // Quantos agentes em paralelo ainda estão trabalhando.
-      agentes: number
-      // O ícone está no fade out, depois de o último agente concluir.
-      saindo: boolean
+      messages: number | null
+      // Number of user sends in the session, used to pick the phrase.
+      sends: number
+      // Character length of the last three sends.
+      recent: number[]
+      // Number of parallel agents still working.
+      agents: number
+      // The icon is fading out, after the last agent finished.
+      fading: boolean
     }
   }
 }

@@ -1,75 +1,75 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
-import { agentesAtivos, DESAPARECE_MS, iconeAgentesSvg } from '../utils/agents'
-import { nivel } from '../utils/levels'
-import { alerta, frasesDeAlerta } from '../utils/alerts'
-import { BARRAS, barrasRaster, barrasSvg, cheias } from '../utils/bars'
-import { cor } from '../utils/colors'
-import { frase } from '../utils/phrases'
+import { activeAgents, FADE_OUT_MS, agentIconSvg } from '../utils/agents'
+import { level } from '../utils/levels'
+import { alert, alertPhrases } from '../utils/alerts'
+import { BARS, barsRaster, barsSvg, filledBars } from '../utils/bars'
+import { color } from '../utils/colors'
+import { phrase } from '../utils/phrases'
 
 const percent = atom({ plugin: 'monitor-de-contexto', key: 'percent' } as const, null)
 const total = atom({ plugin: 'monitor-de-contexto', key: 'total' } as const, null)
-const mensagens = atom({ plugin: 'monitor-de-contexto', key: 'mensagens' } as const, null)
-const envios = atom({ plugin: 'monitor-de-contexto', key: 'envios' } as const, 0)
-// Tamanho em caracteres dos três últimos envios, para o padrão de mensagens curtas (alerta e frase).
-const recentes = atom({ plugin: 'monitor-de-contexto', key: 'recentes' } as const, [] as number[])
-// Agentes em paralelo ainda trabalhando, e se o ícone está saindo (fade out) depois do último.
-const agentes = atom({ plugin: 'monitor-de-contexto', key: 'agentes' } as const, 0)
-const saindo = atom({ plugin: 'monitor-de-contexto', key: 'saindo' } as const, false)
+const messages = atom({ plugin: 'monitor-de-contexto', key: 'messages' } as const, null)
+const sends = atom({ plugin: 'monitor-de-contexto', key: 'sends' } as const, 0)
+// Character length of the last three sends, for the short-message pattern (alert and phrase).
+const recent = atom({ plugin: 'monitor-de-contexto', key: 'recent' } as const, [] as number[])
+// Agents running in parallel, and whether the icon is fading out (after the last one).
+const agents = atom({ plugin: 'monitor-de-contexto', key: 'agents' } as const, 0)
+const fading = atom({ plugin: 'monitor-de-contexto', key: 'fading' } as const, false)
 
-// Vigia que lê o status dos agentes a cada segundo, enquanto houver algum; o timer de sumir é separado.
-let vigia: Timer | null = null
-let apagar: Timer | null = null
+// Watch that reads the agent status every second while any agent runs; the hide timer is separate.
+let watch: Timer | null = null
+let hide: Timer | null = null
 
-const sumir = async ($: EngineInterface) => {
-  apagar = null
-  // Se um agente chegou enquanto o fade corria, saindo já voltou a false: não zera o contador.
-  if (!(await read($, saindo))) {
+const hideAgents = async ($: EngineInterface) => {
+  hide = null
+  // If an agent arrived while the fade was running, fading is already false: do not reset the counter.
+  if (!(await read($, fading))) {
     return
   }
-  await update($, agentes, () => 0)
-  await update($, saindo, () => false)
+  await update($, agents, () => 0)
+  await update($, fading, () => false)
 }
 
-const conferir = async ($: EngineInterface) => {
-  const ativos = agentesAtivos(await $.agent.list())
+const checkAgents = async ($: EngineInterface) => {
+  const active = activeAgents(await $.agent.list())
 
-  if (ativos > 0) {
-    // Há agente trabalhando: cancela um fade pendente, mesmo que o spawn não tenha passado por aqui.
-    if (await read($, saindo)) {
-      apagar?.cancel()
-      apagar = null
-      await update($, saindo, () => false)
+  if (active > 0) {
+    // An agent is working: cancel a pending fade, even if the spawn did not go through here.
+    if (await read($, fading)) {
+      hide?.cancel()
+      hide = null
+      await update($, fading, () => false)
     }
-    // Só grava quando o número muda: a vigia roda a cada segundo e cada gravação redesenha.
-    if ((await read($, agentes)) !== ativos) {
-      await update($, agentes, () => ativos)
+    // Only write when the number changes: the watch runs every second and each write redraws.
+    if ((await read($, agents)) !== active) {
+      await update($, agents, () => active)
     }
     return
   }
 
-  // Ninguém mais trabalhando: para a vigia e faz o ícone sair.
-  vigia?.cancel()
-  vigia = null
+  // Nobody is working any more: stop the watch and make the icon leave.
+  watch?.cancel()
+  watch = null
 
-  if ((await read($, agentes)) > 0 && !(await read($, saindo))) {
-    await update($, saindo, () => true)
-    apagar = $.clock.after(DESAPARECE_MS, () => {
-      void sumir($)
+  if ((await read($, agents)) > 0 && !(await read($, fading))) {
+    await update($, fading, () => true)
+    hide = $.clock.after(FADE_OUT_MS, () => {
+      void hideAgents($)
     })
   }
 }
 
-const vigiar = ($: EngineInterface) => {
-  if (!vigia) {
-    vigia = $.clock.every(1000, () => {
-      void conferir($).catch(() => undefined)
+const watchAgents = ($: EngineInterface) => {
+  if (!watch) {
+    watch = $.clock.every(1000, () => {
+      void checkAgents($).catch(() => undefined)
     })
   }
 }
 
-const medir = async ($: EngineInterface) => {
+const measure = async ($: EngineInterface) => {
   const { context } = await $.session.usage({ breakdown: 'summary' })
 
   if (context.percent !== undefined) {
@@ -78,115 +78,120 @@ const medir = async ($: EngineInterface) => {
 
   await update($, total, () => context.tokens ?? null)
 
-  // A linha Messages junta o que o aluno digita, as respostas do Claude e o que as ferramentas devolvem.
-  const linha = context.breakdown?.categories.find(c => c.kind === 'used' && c.name === 'Messages')
+  // The Messages line joins what the student types, Claude's replies and what the tools return.
+  const line = context.breakdown?.categories.find(c => c.kind === 'used' && c.name === 'Messages')
 
-  if (linha) {
-    await update($, mensagens, () => linha.tokens)
+  if (line) {
+    await update($, messages, () => line.tokens)
   }
 }
 
 export const register: Register = on => {
-  // O monitor nunca pode travar a sessão: falhas dele ficam de fora, e o next sempre roda.
+  // The monitor must never block the session: its failures are swallowed, and next always runs.
   on('session.start', async ($, e, next) => {
     const result = await next(e)
-    await medir($).catch(() => undefined)
+    await measure($).catch(() => undefined)
 
     return result
   })
 
-  // Cada mensagem que o aluno envia; comandos e textos que ele não digitou ficam de fora.
+  // Each message the student sends; commands and text they did not type are left out.
   on('prompt.submit', async ($, e, next) => {
     if (!e.command && !e.isMeta) {
-      await update($, envios, atual => atual + 1).catch(() => undefined)
-      await update($, recentes, atual => [...atual, e.text.length].slice(-3)).catch(() => undefined)
+      await update($, sends, current => current + 1).catch(() => undefined)
+      await update($, recent, current => [...current, e.text.length].slice(-3)).catch(() => undefined)
     }
 
     return next(e)
-  }).catch(($, e, next) => next(e)) // Se o monitor falhar, o envio do aluno segue como se nada tivesse acontecido.
+  }).catch(($, e, next) => next(e)) // If the monitor fails, the student's send goes through as if nothing happened.
 
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
-    await medir($).catch(() => undefined)
+    await measure($).catch(() => undefined)
 
     return result
   })
 
-  // Cada agente disparado conta logo; a vigia corrige o número com o status real.
+  // Each agent spawned counts right away; the watch corrects the number with the real status.
   on('agent.spawn', async ($, e, next) => {
     const result = await next(e)
 
-    // Um spawn recusado ({ deny }) não começa agente, então não conta.
+    // A refused spawn ({ deny }) starts no agent, so it does not count.
     if (!('deny' in (result as object))) {
-      apagar?.cancel()
-      apagar = null
-      await update($, saindo, () => false).catch(() => undefined)
-      await update($, agentes, atual => atual + 1).catch(() => undefined)
-      vigiar($)
+      hide?.cancel()
+      hide = null
+      await update($, fading, () => false).catch(() => undefined)
+      await update($, agents, current => current + 1).catch(() => undefined)
+      watchAgents($)
     }
 
     return result
-  }).catch(($, e, next) => next(e)) // Se o contador falhar, o spawn segue sem ser atrapalhado.
+  }).catch(($, e, next) => next(e)) // If the counter fails, the spawn goes ahead untouched.
 
-  // Depois de cada turno e de cada compactação, quando a contagem chega.
+  // After each turn and each compaction, once the count arrives.
   on('session.measure', async ($, e, next) => {
     const result = await next(e)
 
     if (e.changed.includes('context')) {
-      await medir($).catch(() => undefined)
+      await measure($).catch(() => undefined)
     }
 
     return result
   })
 
-  // A faixa acima do prompt: barras na cor do nível, porcentagem e uma frase de apoio em cinza. O desktop não desenha a linha de dica embaixo do prompt.
+  // The band above the prompt: bars in the level colour, the percentage and a grey support phrase.
+  // The desktop does not draw the hint line below the prompt.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) {
       return next(e)
     }
 
-    // Sem contagem, a faixa mostra "sem medida" em vez de um 0% enganoso. Desenhar não pode gravar estado:
-    // o host recusa, então a medição acontece só nos eventos de sessão e de turno.
-    const medido = await read($, percent)
-    const legenda = medido === null ? 'sem medida' : `${medido}%`
-    const n = cheias(medido ?? 0)
-    // Os números de mensagens e envios ficam por baixo: só escolhem a cor e a frase.
-    const mensagensLidas = await read($, mensagens)
-    const tokens = mensagensLidas ?? 0
-    const enviados = await read($, envios)
-    const ultimos = await read($, recentes)
-    // O alerta usa o total, a parte de mensagens e os últimos envios; sem total ainda, fica livre.
-    const aviso = alerta({ total: await read($, total), mensagens: mensagensLidas, recentes: ultimos })
-    const faixa = nivel(tokens)
-    const tinta = cor(faixa)
-    const agentesN = await read($, agentes)
-    const agentesSaindo = await read($, saindo)
-    const mostraAgentes = agentesN > 0 || agentesSaindo
+    // Without a count, the band shows "sem medida" (no measure) instead of a misleading 0%.
+    // Drawing cannot write state: the host refuses it, so measuring happens only on session and turn events.
+    const measured = await read($, percent)
+    const caption = measured === null ? 'sem medida' : `${measured}%`
+    const filled = filledBars(measured ?? 0)
+    // The message and send numbers stay in the background: they only choose the colour and the phrase.
+    const messagesRead = await read($, messages)
+    const tokens = messagesRead ?? 0
+    const sent = await read($, sends)
+    const last = await read($, recent)
+    // The alert uses the total, the messages share and the recent sends; with no total yet, it stays free.
+    const warning = alert({ total: await read($, total), messages: messagesRead, recent: last })
+    const band = level(tokens)
+    const ink = color(band)
+    const agentsN = await read($, agents)
+    const agentsFading = await read($, fading)
+    const showAgents = agentsN > 0 || agentsFading
     const { Box, Text } = $.ui.resolve(e)
-    let barras
-    let icone = null
+    let bars
+    let icon = null
 
     if (e.surface === 'terminal') {
       const { Raster } = $.ui.resolve(e)
-      barras = <Raster key="barras" columns={BARRAS} rows={1} cells={barrasRaster(n, tinta)} />
+      bars = <Raster key="bars" columns={BARS} rows={1} cells={barsRaster(filled, ink)} />
     } else {
       const { Svg } = $.ui.resolve(e)
-      barras = <Svg source={barrasSvg(n, tinta)} alt={`contexto ${legenda}`} />
-      // O ícone só aparece no desktop: o terminal não anima SVG. A chave muda entre entrar e sair, para o fade rodar de novo.
-      if (mostraAgentes) {
-        icone = <Svg key={agentesSaindo ? 'saindo' : 'entrando'} source={iconeAgentesSvg('#888780', agentesSaindo)} alt={`${agentesN} agentes em paralelo`} />
+      bars = <Svg source={barsSvg(filled, ink)} alt={`contexto ${caption}`} />
+      // The icon only appears on the desktop: the terminal does not animate SVG.
+      // The key changes between entering and leaving, so the fade runs again.
+      if (showAgents) {
+        icon = <Svg key={agentsFading ? 'fading' : 'entering'} source={agentIconSvg('#888780', agentsFading)} alt={`${agentsN} agentes em paralelo`} />
       }
     }
 
+    // Left group: bars, percentage and phrase. Right group: the agent icon and its count, pinned to the right edge.
     return (
-      <Box flexDirection="row" alignItems="center" gap={1}>
-        {barras}
-        <Text>{legenda}</Text>
-        <Text dimColor>{aviso === 'livre' ? frase(faixa, enviados, ultimos) : frasesDeAlerta[aviso]}</Text>
-        {mostraAgentes ? (
+      <Box flexDirection="row" alignItems="center" justifyContent="space-between" gap={1}>
+        <Box flexDirection="row" alignItems="center" gap={1}>
+          {bars}
+          <Text>{caption}</Text>
+          <Text dimColor>{warning === 'free' ? phrase(band, sent, last) : alertPhrases[warning]}</Text>
+        </Box>
+        {showAgents ? (
           <Box flexDirection="row" alignItems="center" gap={1}>
-            {icone}
-            <Text>{agentesN}</Text>
+            {icon}
+            <Text>{agentsN}</Text>
           </Box>
         ) : null}
       </Box>

@@ -1,5 +1,5 @@
-// Frases de apoio, ~20 por nível (um nível a cada 50k tokens da linha Messages, até 500k).
-// Valem para todos. Uma lista por nível, do 0 ao 10.
+// Support phrases, ~20 per level (one level per 50k tokens of the Messages line, up to 500k).
+// Shown to everyone. One list per level, from 0 to 10. The phrases are user-facing, so they stay in Portuguese.
 
 export const contextQuotes: string[][] = [
   [
