@@ -1,7 +1,6 @@
 {
   "name": "monitor-de-contexto",
   "displayName": "Monitor de Contexto",
-  "version": "0.0.2",
   "description": "Mostra acima do prompt quanto da janela de contexto já foi usado, em 4 barras, com a porcentagem e uma dica",
   "author": {
     "name": "Alfredo Gazperi",
