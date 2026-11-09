@@ -1,0 +1,20 @@
+{
+  "name": "organizador-de-google-agenda",
+  "displayName": "Organizador de Google Agenda",
+  "description": "Organiza a sua rotina a partir do Google Agenda, usando o conector do Claude, skills e hooks",
+  "author": {
+    "name": "Alfredo Gazperi",
+    "email": "falecom@humanoensinando.ai",
+    "url": "https://humanoensinando.ai"
+  },
+  "license": "MIT",
+  "homepage": "https://humanoensinando.ai",
+  "repository": "https://github.com/HumanoEnsinandoAI/humano-e-sua-caixa-de-ferramentas",
+  "keywords": [
+    "google-agenda",
+    "calendario",
+    "organizacao",
+    "rotina"
+  ],
+  "types": "./types/index.d.ts"
+}

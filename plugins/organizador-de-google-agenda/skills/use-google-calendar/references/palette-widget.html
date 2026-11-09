@@ -1,0 +1,101 @@
+<h2 class="sr-only">Pré-visualização de paletas de cores em uma semana simulada do Google Agenda, com setas para passar de uma paleta para a próxima.</h2>
+<style>
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.pw-bar{display:flex;align-items:center;gap:12px;margin:0 0 12px}
+.pw-mode{display:flex;gap:4px}
+.pw-mode button[aria-pressed="true"]{background:var(--surface-1);border-color:var(--border-stronger)}
+.pw-title{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:8px;margin:0 0 10px}
+.pw-title button{width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center}
+.pw-mid{text-align:center;min-width:0}
+.pw-count{font-size:12px;color:var(--text-secondary);margin:2px 0 0}
+.pw-name{font-size:18px;font-weight:500;margin:0}
+.pw-desc{font-size:13px;color:var(--text-secondary);margin:0}
+.pw-cal{border:0.5px solid var(--border);border-radius:12px;padding:10px 10px 6px;overflow:hidden}
+.pw-head{display:grid;grid-template-columns:38px repeat(5,minmax(0,1fr));gap:6px;font-size:12px;margin-bottom:4px}
+.pw-body{display:grid;grid-template-columns:38px repeat(5,minmax(0,1fr));gap:6px}
+.pw-col{position:relative;height:336px;border-left:0.5px solid rgba(128,128,128,.25)}
+.pw-hours{position:relative;height:336px;font-size:11px}
+.pw-hours span{position:absolute;right:4px;transform:translateY(-50%);opacity:.7}
+.pw-ev{position:absolute;left:2px;right:2px;border-radius:6px;padding:3px 6px;font-size:11px;line-height:1.25;overflow:hidden}
+.pw-sw{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+.pw-sw span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)}
+.pw-sw i{display:inline-block;width:18px;height:18px;border-radius:5px;border:0.5px solid var(--border)}
+</style>
+<div class="pw-bar">
+  <div class="pw-mode" role="group" aria-label="Modo">
+    <button id="pw-light" type="button" aria-pressed="true">Claro</button>
+    <button id="pw-dark" type="button" aria-pressed="false">Escuro</button>
+  </div>
+</div>
+<div class="pw-title">
+  <button id="pw-prev" type="button" aria-label="Paleta anterior"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M11 3.5L5.5 9L11 14.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <div class="pw-mid">
+    <p class="pw-name" id="pw-name"></p>
+    <p class="pw-desc" id="pw-desc"></p>
+    <p class="pw-count" id="pw-count"></p>
+  </div>
+  <button id="pw-next" type="button" aria-label="Próxima paleta"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M7 3.5L12.5 9L7 14.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+</div>
+<div class="pw-cal" id="pw-cal">
+  <div class="pw-head" id="pw-head"></div>
+  <div class="pw-body" id="pw-body"></div>
+</div>
+<div class="pw-sw" id="pw-sw"></div>
+<script>
+const PALETTES = __PALETTES__;
+const DAYS = ['Seg','Ter','Qua','Qui','Sex'];
+const EVENTS = [
+  [['Reunião de equipe',9,10,0],['Almoço',12,13,1],['Foco',14,16.5,0]],
+  [['Treino',7,8,1],['Projeto',9.5,12,0],['Consulta',15,16,1]],
+  [['Estudo',10,11.5,1],['Conversa 1:1',13,14,0],['Rotina diária',17,17.75,2]],
+  [['Planejamento',9,11,0],['Almoço com amigos',12.5,13.5,1],['Foco',14,17,0]],
+  [['Revisão da semana',9,10,2],['Aula',11,12.5,1],['Leitura',16,18,1]]
+];
+const FIRST = 7, ROW = 28;
+let mode = 'light', index = 0;
+const $ = id => document.getElementById(id);
+const list = () => PALETTES.filter(p => p.mode === mode);
+const ink = hex => {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? '#1f1f1f' : '#ffffff';
+};
+const fmt = h => { const m = Math.round((h % 1) * 60); return Math.floor(h) + 'h' + (m ? String(m).padStart(2, '0') : ''); };
+function draw() {
+  const items = list();
+  if (!items.length) { $('pw-name').textContent = 'Nenhuma paleta neste modo'; return; }
+  const p = items[index];
+  const dark = mode === 'dark';
+  const bg = dark ? '#1f1f1f' : '#ffffff', fg = dark ? '#e8e8e8' : '#3c3c3c';
+  $('pw-name').textContent = p.name;
+  $('pw-desc').textContent = p.description;
+  $('pw-count').textContent = (index + 1) + ' de ' + items.length;
+  const cal = $('pw-cal'); cal.style.background = bg; cal.style.color = fg;
+  $('pw-head').innerHTML = '<span></span>' + DAYS.map(d => '<span style="text-align:center">' + d + '</span>').join('');
+  let hours = '<div class="pw-hours">';
+  for (let h = FIRST; h <= 19; h += 2) hours += '<span style="top:' + (h - FIRST) * ROW + 'px">' + h + 'h</span>';
+  hours += '</div>';
+  let cols = '';
+  EVENTS.forEach(day => {
+    cols += '<div class="pw-col">' + day.map(e => {
+      const c = p.colors[e[3] % p.colors.length];
+      return '<div class="pw-ev" style="top:' + (e[1] - FIRST) * ROW + 'px;height:' + (e[2] - e[1]) * ROW + 'px;background:' + c + ';color:' + ink(c) + '"><b style="font-weight:500">' + e[0] + '</b><br>' + fmt(e[1]) + '–' + fmt(e[2]) + '</div>';
+    }).join('') + '</div>';
+  });
+  $('pw-body').innerHTML = hours + cols;
+  const ROLES = ['Trabalho', 'Pessoal', 'Rotinas'];
+  $('pw-sw').innerHTML = p.colors.map((c, i) => '<span><i style="background:' + c + '"></i>' + ROLES[i] + ' · ' + (p.colorNames ? p.colorNames[i] : '') + ' ' + c.toUpperCase() + '</span>').join('');
+}
+function step(d) { const n = list().length; if (!n) return; index = (index + d + n) % n; draw(); }
+function setMode(m) {
+  mode = m; index = 0;
+  $('pw-light').setAttribute('aria-pressed', String(m === 'light'));
+  $('pw-dark').setAttribute('aria-pressed', String(m === 'dark'));
+  draw();
+}
+$('pw-prev').addEventListener('click', () => step(-1));
+$('pw-next').addEventListener('click', () => step(1));
+$('pw-light').addEventListener('click', () => setMode('light'));
+$('pw-dark').addEventListener('click', () => setMode('dark'));
+document.addEventListener('keydown', e => { if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1); });
+draw();
+</script>

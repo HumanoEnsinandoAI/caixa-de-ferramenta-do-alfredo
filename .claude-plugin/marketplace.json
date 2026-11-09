@@ -11,6 +11,11 @@
       "name": "monitor-de-contexto",
       "source": "./plugins/monitor-de-contexto",
       "description": "Janela de contexto: mostra acima do prompt quanto da janela de contexto já foi usado, em 4 barras, com a porcentagem e uma dica. Inclui a skill agents-md-thermometer, que verifica AGENTS.md e CLAUDE.md."
+    },
+    {
+      "name": "organizador-de-google-agenda",
+      "source": "./plugins/organizador-de-google-agenda",
+      "description": "Organiza a sua rotina a partir do Google Agenda, usando o conector do Claude, skills e hooks."
     }
   ]
 }
